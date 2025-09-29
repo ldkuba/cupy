@@ -2004,7 +2004,7 @@ def spsm(a, b, alpha=1.0, lower=True, unit_diag=False, transa=False):
         _cusparse.spSM_destroyDescr(spsm_descr)
 
 
-def spgemm(a, b, alpha=1):
+def spgemm(a, b, alpha=1, algo=_cusparse.CUSPARSE_SPGEMM_DEFAULT):
     """Matrix-matrix product for CSR-matrix.
 
     math::
@@ -2048,7 +2048,6 @@ def spgemm(a, b, alpha=1):
     alpha = _numpy.array(alpha, dtype=c.dtype).ctypes
     beta = _numpy.array(0, dtype=c.dtype).ctypes
     cuda_dtype = _dtype.to_cuda_dtype(c.dtype)
-    algo = _cusparse.CUSPARSE_SPGEMM_DEFAULT
     null_ptr = 0
 
     try:
@@ -2077,14 +2076,30 @@ def spgemm(a, b, alpha=1):
             mat_c.desc, cuda_dtype, algo, spgemm_descr, buff1_size,
             buff1.data.ptr)
 
-    # Compute the intermediate product of A and B
-    buff2_size = _cusparse.spGEMM_compute(
-        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
-        mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
-    buff2 = _cupy.empty(buff2_size, _cupy.int8)
-    _cusparse.spGEMM_compute(
-        handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
-        mat_c.desc, cuda_dtype, algo, spgemm_descr, buff2_size, buff2.data.ptr)
+    if algo == _cusparse.CUSPARSE_SPGEMM_ALG2 or algo == _cusparse.CUSPARSE_SPGEMM_ALG3:
+        # Estimate memory
+        buff3_size, _ = _cusparse.spGEMM_estimateMemory(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data, 
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, 0.0, 0, null_ptr, 0)
+        buff3 = _cupy.empty(buff3_size, _cupy.int8)
+        _, buff2_size = _cusparse.spGEMM_estimateMemory(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, 0.0, buff3_size,
+            buff3.data.ptr, 0)
+        buff2 = _cupy.empty(buff2_size, _cupy.int8)
+
+        _cusparse.spGEMM_compute(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, buff2_size, buff2.data.ptr)
+    else:
+        # Compute the intermediate product of A and B
+        buff2_size = _cusparse.spGEMM_compute(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, 0, null_ptr)
+        buff2 = _cupy.empty(buff2_size, _cupy.int8)
+        _cusparse.spGEMM_compute(
+            handle, op_a, op_b, alpha.data, mat_a.desc, mat_b.desc, beta.data,
+            mat_c.desc, cuda_dtype, algo, spgemm_descr, buff2_size, buff2.data.ptr)
 
     # Prepare the arrays for matrix C
     c_num_rows = _numpy.array(0, dtype='int64')

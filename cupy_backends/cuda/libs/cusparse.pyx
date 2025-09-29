@@ -1343,6 +1343,12 @@ cdef extern from '../../cupy_sparse.h' nogil:
         SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
         DataType computeType, SpGEMMAlg alg, SpGEMMDescr spgemmDescr,
         size_t* bufferSize1, void* externalBuffer1)
+    Status cusparseSpGEMM_estimateMemory(
+        Handle handle, Operation opA, Operation opB, const void* alpha,
+        SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
+        DataType computeType, SpGEMMAlg alg, SpGEMMDescr spgemmDescr, 
+        float chunk_fraction, size_t* bufferSize3, void* externalBuffer3, 
+        size_t* bufferSize2)
     Status cusparseSpGEMM_compute(
         Handle handle, Operation opA, Operation opB, const void* alpha,
         SpMatDescr matA, SpMatDescr matB, const void* beta, SpMatDescr matC,
@@ -5078,6 +5084,21 @@ cpdef size_t spGEMM_workEstimation(
         <void*>externalBuffer1)
     check_status(status)
     return bufferSize1
+
+cpdef (size_t, size_t) spGEMM_estimateMemory(
+        intptr_t handle, Operation opA, Operation opB, intptr_t alpha,
+        size_t matA, size_t matB, intptr_t beta, size_t matC,
+        DataType computeType, int alg, size_t spgemmDescr, float chunk_fraction,
+        size_t bufferSize, intptr_t externalBuffer3, size_t bufferSize_2):
+    cdef size_t bufferSize3 = bufferSize
+    cdef size_t bufferSize2 = bufferSize_2
+    status = cusparseSpGEMM_estimateMemory(
+        <Handle>handle, opA, opB, <const void*>alpha, <SpMatDescr>matA,
+        <SpMatDescr>matB, <const void*>beta, <SpMatDescr>matC, computeType,
+        <SpGEMMAlg>alg, <SpGEMMDescr>spgemmDescr, chunk_fraction, &bufferSize3,
+        <void*>externalBuffer3, &bufferSize2)
+    check_status(status)
+    return (bufferSize3, bufferSize2)
 
 cpdef size_t spGEMM_compute(
         intptr_t handle, Operation opA, Operation opB, intptr_t alpha,

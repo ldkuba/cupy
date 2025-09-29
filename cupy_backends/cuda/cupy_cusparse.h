@@ -905,6 +905,14 @@ cusparseStatus_t cusparseCooAoSGet(...) {
   return CUSPARSE_STATUS_SUCCESS;
 }
 
+cusparseStatus_t cusparseSpGEMM_estimateMemory(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
+cusparseStatus_t cusparseSpGEMM_getNumProducts(...) {
+  return CUSPARSE_STATUS_SUCCESS;
+}
+
 #endif // #if CUSPARSE_VERSION >= 12000
 
 #endif  // INCLUDE_GUARD_CUDA_CUPY_CUSPARSE_H
